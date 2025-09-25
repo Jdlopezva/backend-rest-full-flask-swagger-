@@ -99,7 +99,8 @@ def main():
     # Run tests
     tests = [
         ("Test/BackEnd-Test.py", "Backend Integration Tests"),
-        ("Test/FrontEnd-Test.py", "Frontend E2E Tests")
+        ("Test/FrontEnd-Test.py", "Frontend E2E Tests"),
+        ("Test/Stats-Integration-Test.py", "Statistics Integration Tests")
     ]
     
     results = {}

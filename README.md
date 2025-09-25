@@ -295,6 +295,7 @@ Cada reporte incluye:
 - `DELETE /users/{id}` - **[NUEVO]** Eliminar usuario específico
 - `DELETE /users/cleanup` - **[NUEVO]** Eliminar todos los usuarios
 - `DELETE /users/cleanup-specific` - **[NUEVO]** Eliminar usuarios específicos por lista de IDs
+- `GET /users/stats` - **[NUEVO]** Obtener estadísticas de usuarios y sistema
 
 ### Servicio de Tareas (Puerto 5002)
 - `GET /tasks` - Listar todas las tareas
@@ -302,6 +303,7 @@ Cada reporte incluye:
 - `DELETE /tasks/{id}` - **[NUEVO]** Eliminar tarea específica
 - `DELETE /tasks/cleanup` - **[NUEVO]** Eliminar todas las tareas
 - `DELETE /tasks/cleanup-specific` - **[NUEVO]** Eliminar tareas específicas por lista de IDs
+- `GET /tasks/stats` - **[NUEVO]** Obtener estadísticas detalladas de tareas y productividad
 
 ## Flujo de Pruebas
 
@@ -320,6 +322,15 @@ Cada reporte incluye:
 4. **Verificar tarea** aparece en lista
 5. **Limpieza** → Eliminar datos rastreados
 6. **Verificar limpieza** → Confirmar eliminación
+7. **Generar reporte PDF**
+
+### Prueba de Integración de Estadísticas **[NUEVA]**
+1. **Configurar datos de prueba** → Crear usuarios y tareas con distribución específica
+2. **Probar endpoint /users/stats** → Verificar estadísticas de usuarios y cross-service
+3. **Probar endpoint /tasks/stats** → Verificar métricas de productividad y análisis
+4. **Verificar integración** → Confirmar consistencia entre servicios
+5. **Probar rendimiento** → Verificar tiempos de respuesta
+6. **Limpieza y verificación** → Eliminar datos y confirmar limpieza
 7. **Generar reporte PDF**
 
 ## Métricas de Reportes

@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS  # 👈 Agregado
+import requests
 import os
+from datetime import datetime
 
 service_a = Flask(__name__)
 CORS(service_a)  # 👈 Habilita CORS
@@ -89,6 +91,50 @@ def cleanup_specific_users():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@service_a.route('/users/stats', methods=['GET'])
+def get_user_stats():
+    """Get user statistics - useful for system monitoring and dashboards"""
+    try:
+        total_users = User.query.count()
+        
+        # Get recent users (last 5)
+        recent_users = User.query.order_by(User.id.desc()).limit(5).all()
+        recent_users_data = [{'id': u.id, 'name': u.name} for u in recent_users]
+        
+        # Try to get task statistics from Task Service
+        task_stats = {'total_tasks': 0, 'users_with_tasks': 0, 'error': None}
+        try:
+            tasks_response = requests.get('http://localhost:5002/tasks', timeout=2)
+            if tasks_response.status_code == 200:
+                tasks_data = tasks_response.json()
+                task_stats['total_tasks'] = len(tasks_data)
+                # Count unique users with tasks
+                users_with_tasks = set(task['user_id'] for task in tasks_data)
+                task_stats['users_with_tasks'] = len(users_with_tasks)
+        except Exception as e:
+            task_stats['error'] = f'Task service unavailable: {str(e)}'
+        
+        stats = {
+            'timestamp': datetime.now().isoformat(),
+            'users': {
+                'total_users': total_users,
+                'recent_users': recent_users_data
+            },
+            'tasks': task_stats,
+            'system': {
+                'status': 'healthy' if task_stats['error'] is None else 'partial',
+                'services': {
+                    'user_service': 'online',
+                    'task_service': 'online' if task_stats['error'] is None else 'offline'
+                }
+            }
+        }
+        
+        return jsonify(stats), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to get statistics: {str(e)}'}), 500
 
 if __name__ == '__main__':
     with service_a.app_context():

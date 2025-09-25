@@ -91,6 +91,78 @@ def cleanup_specific_tasks():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@service_b.route('/tasks/stats', methods=['GET'])
+def get_task_stats():
+    """Get task statistics - useful for system monitoring and dashboards"""
+    try:
+        from datetime import datetime
+        from collections import Counter
+        
+        total_tasks = Task.query.count()
+        
+        # Get all tasks for analysis
+        all_tasks = Task.query.all()
+        tasks_data = [{'id': t.id, 'title': t.title, 'user_id': t.user_id} for t in all_tasks]
+        
+        # Count tasks per user
+        user_task_counts = Counter(task.user_id for task in all_tasks)
+        users_with_tasks = len(user_task_counts)
+        
+        # Get recent tasks (last 5)
+        recent_tasks = Task.query.order_by(Task.id.desc()).limit(5).all()
+        recent_tasks_data = [{'id': t.id, 'title': t.title, 'user_id': t.user_id} for t in recent_tasks]
+        
+        # Try to get user information
+        user_service_stats = {'total_users': 0, 'error': None}
+        try:
+            users_response = requests.get('http://localhost:5001/users', timeout=2)
+            if users_response.status_code == 200:
+                users_data = users_response.json()
+                user_service_stats['total_users'] = len(users_data)
+        except Exception as e:
+            user_service_stats['error'] = f'User service unavailable: {str(e)}'
+        
+        # Calculate productivity metrics
+        productivity_metrics = {}
+        if user_service_stats['total_users'] > 0 and total_tasks > 0:
+            productivity_metrics['avg_tasks_per_user'] = round(total_tasks / user_service_stats['total_users'], 2)
+        else:
+            productivity_metrics['avg_tasks_per_user'] = 0
+        
+        if users_with_tasks > 0:
+            productivity_metrics['avg_tasks_per_active_user'] = round(total_tasks / users_with_tasks, 2)
+        else:
+            productivity_metrics['avg_tasks_per_active_user'] = 0
+        
+        # Most productive users (top 3)
+        top_users = []
+        for user_id, task_count in user_task_counts.most_common(3):
+            top_users.append({'user_id': user_id, 'task_count': task_count})
+        
+        stats = {
+            'timestamp': datetime.now().isoformat(),
+            'tasks': {
+                'total_tasks': total_tasks,
+                'users_with_tasks': users_with_tasks,
+                'recent_tasks': recent_tasks_data,
+                'top_productive_users': top_users
+            },
+            'users': user_service_stats,
+            'productivity_metrics': productivity_metrics,
+            'system': {
+                'status': 'healthy' if user_service_stats['error'] is None else 'partial',
+                'services': {
+                    'task_service': 'online',
+                    'user_service': 'online' if user_service_stats['error'] is None else 'offline'
+                }
+            }
+        }
+        
+        return jsonify(stats), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to get task statistics: {str(e)}'}), 500
+
 if __name__ == '__main__':
     with service_b.app_context():
         db.create_all()
